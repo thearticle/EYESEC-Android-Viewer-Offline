@@ -8,11 +8,13 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Hardware Decoded](https://img.shields.io/badge/Decoding-MediaCodec%20HW-orange?style=for-the-badge)](https://developer.android.com/reference/android/media/MediaCodec)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Release](https://img.shields.io/badge/Release-v1.0.0-blue?style=for-the-badge&logo=github)](https://github.com/thearticle/EYESEC-Android-Viewer-Offline/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green?style=for-the-badge)](https://developer.android.com)
 
 <p align="center">
   <a href="#-overview">Overview</a> •
   <a href="#-key-features">Key Features</a> •
+  <a href="#-releases--apk-downloads">Releases (APKs)</a> •
   <a href="#-how-to-find-camera-ip--credentials">Camera Setup Guide</a> •
   <a href="#-technical-architecture">Architecture</a> •
   <a href="#-tech-stack">Tech Stack</a> •
@@ -44,6 +46,23 @@ Unlike vendor cloud apps that route camera streams through remote servers with s
   - ❓ **Illustrated Setup Help**: Step-by-step guidance on locating the ONVIF IP and password.
   - 👤 **Developer Credits**: Quick interactive links to developer portfolio and email.
 - 🛡️ **Offline & 100% Private**: Zero external analytics, cloud servers, or third-party tracking. All credentials persist securely on your device.
+
+---
+
+## 📦 Releases & APK Downloads
+
+Pre-built binaries are available under [GitHub Releases](https://github.com/thearticle/EYESEC-Android-Viewer-Offline/releases/latest):
+
+| APK Package | Architecture | Size | Recommendation |
+|:---|:---|:---:|:---|
+| **`app-arm64-v8a-debug.apk`** | 64-bit ARM (`arm64-v8a`) | ~23 MB | **Recommended for all modern Android phones/tablets** (Samsung, Xiaomi, Pixel, Oppo, Vivo, etc.) |
+| **`app-armeabi-v7a-debug.apk`** | 32-bit ARM (`armeabi-v7a`) | ~23 MB | For older 32-bit Android hardware |
+| **`app-universal-debug.apk`** | Universal (All ABIs) | ~23 MB | Fallback compatible with any physical device |
+
+> **Direct Installation via ADB:**
+> ```bash
+> adb install -r app-arm64-v8a-debug.apk
+> ```
 
 ---
 
