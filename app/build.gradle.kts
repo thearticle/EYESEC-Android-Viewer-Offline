@@ -30,7 +30,8 @@ android {
 
   buildTypes {
     release {
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
     }
   }
@@ -101,7 +102,7 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // RTSP Streaming (LibVLC)
-  implementation(libs.libvlc.all)
+  // Lightweight RTSP client backed directly by Android MediaCodec
+  implementation(libs.rtsp.client.android)
   implementation(libs.androidx.compose.material.icons)
 }

@@ -5,6 +5,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.alexvas.rtsp.RtspClient
+import com.alexvas.rtsp.widget.RtspStatusListener
+import com.alexvas.rtsp.widget.RtspSurfaceView
 import com.eyesec.viewer.data.CameraConfig
 import com.eyesec.viewer.data.CameraSettingsRepository
 import com.eyesec.viewer.data.StreamQuality
@@ -17,10 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.videolan.libvlc.LibVLC
-import org.videolan.libvlc.Media
-import org.videolan.libvlc.MediaPlayer
-import org.videolan.libvlc.util.VLCVideoLayout
 import java.net.InetSocketAddress
 import java.net.Socket
 
@@ -28,8 +27,14 @@ enum class PlayerState {
     IDLE,
     CONNECTING,
     PLAYING,
-    BUFFERING,
     ERROR
+}
+
+enum class ActiveModal {
+    NONE,
+    SETTINGS,
+    CREDITS,
+    HELP
 }
 
 data class PlayerUiState(
@@ -39,7 +44,9 @@ data class PlayerUiState(
     val pingMs: Long? = null,
     val isControlsVisible: Boolean = true,
     val isFullscreen: Boolean = false,
-    val isSettingsSheetOpen: Boolean = false
+    val activeModal: ActiveModal = ActiveModal.NONE,
+    val videoWidth: Int = 0,
+    val videoHeight: Int = 0
 )
 
 class PlayerViewModel(
@@ -50,85 +57,72 @@ class PlayerViewModel(
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
 
-    private var libVLC: LibVLC? = null
-    private var mediaPlayer: MediaPlayer? = null
-    private var videoLayoutRef: VLCVideoLayout? = null
+    private var surfaceViewRef: RtspSurfaceView? = null
     private var pingJob: Job? = null
+    private var restartStreamJob: Job? = null
 
     init {
         val loaded = repository.loadConfig()
         _uiState.value = _uiState.value.copy(
             config = loaded,
-            isSettingsSheetOpen = loaded.ip.isBlank()
+            activeModal = if (loaded.ip.isBlank()) ActiveModal.SETTINGS else ActiveModal.NONE
         )
     }
 
-    private fun initLibVLC(): LibVLC {
-        if (libVLC == null) {
-            val options = arrayListOf(
-                "--network-caching=300",
-                "--live-caching=300",
-                "--rtsp-tcp",                // TCP RTSP interleaved
-                "--no-drop-late-frames",
-                "--no-skip-frames",
-                "--avcodec-hw=any",
-                "-vvv"
-            )
-            libVLC = LibVLC(context, options)
-        }
-        return libVLC!!
-    }
-
-    fun attachVideoLayout(layout: VLCVideoLayout) {
-        videoLayoutRef = layout
-        if (mediaPlayer == null) {
-            val vlc = initLibVLC()
-            mediaPlayer = MediaPlayer(vlc).apply {
-                attachViews(layout, null, false, false)
-                setEventListener { event ->
-                    when (event.type) {
-                        MediaPlayer.Event.Buffering -> {
-                            if (_uiState.value.playerState != PlayerState.PLAYING) {
-                                _uiState.value = _uiState.value.copy(
-                                    playerState = PlayerState.BUFFERING,
-                                    errorMessage = null
-                                )
-                            }
-                        }
-                        MediaPlayer.Event.Playing -> {
-                            _uiState.value = _uiState.value.copy(
-                                playerState = PlayerState.PLAYING,
-                                errorMessage = null
-                            )
-                        }
-                        MediaPlayer.Event.EncounteredError -> {
-                            _uiState.value = _uiState.value.copy(
-                                playerState = PlayerState.ERROR,
-                                errorMessage = "Stream error: check camera credentials or RTSP path"
-                            )
-                        }
-                        MediaPlayer.Event.Stopped -> {
-                            if (_uiState.value.playerState != PlayerState.ERROR) {
-                                _uiState.value = _uiState.value.copy(playerState = PlayerState.IDLE)
-                            }
-                        }
-                    }
+    fun attachSurfaceView(surfaceView: RtspSurfaceView) {
+        surfaceViewRef = surfaceView
+        surfaceView.setStatusListener(object : RtspStatusListener {
+            override fun onRtspStatusConnecting() {
+                // Keep playing if already playing so screen doesn't flicker/buffering modal doesn't flash
+                if (_uiState.value.playerState != PlayerState.PLAYING) {
+                    _uiState.value = _uiState.value.copy(
+                        playerState = PlayerState.CONNECTING,
+                        errorMessage = null
+                    )
                 }
             }
-        } else {
-            mediaPlayer?.detachViews()
-            mediaPlayer?.attachViews(layout, null, false, false)
-        }
 
-        applyAudioVolume()
-        if (_uiState.value.config.ip.isNotBlank() && _uiState.value.playerState == PlayerState.IDLE) {
+            override fun onRtspStatusConnected() {
+                // No popup during stream handshake
+            }
+
+            override fun onRtspStatusDisconnected() {
+                if (_uiState.value.playerState != PlayerState.ERROR) {
+                    _uiState.value = _uiState.value.copy(playerState = PlayerState.IDLE)
+                }
+            }
+
+            override fun onRtspStatusFailed(message: String?) {
+                _uiState.value = _uiState.value.copy(
+                    playerState = PlayerState.ERROR,
+                    errorMessage = message ?: "Failed to connect to camera"
+                )
+            }
+
+            override fun onRtspFirstFrameRendered() {
+                _uiState.value = _uiState.value.copy(
+                    playerState = PlayerState.PLAYING,
+                    errorMessage = null
+                )
+            }
+
+            override fun onRtspFrameSizeChanged(width: Int, height: Int) {
+                _uiState.value = _uiState.value.copy(
+                    videoWidth = width,
+                    videoHeight = height
+                )
+            }
+        })
+
+        if (_uiState.value.config.ip.isNotBlank()) {
             connect()
         }
     }
 
-    fun detachVideoLayout() {
-        mediaPlayer?.detachViews()
-        videoLayoutRef = null
+    fun detachSurfaceView() {
+        restartStreamJob?.cancel()
+        surfaceViewRef?.stop()
+        surfaceViewRef = null
     }
 
     fun updateConfig(newConfig: CameraConfig) {
@@ -138,46 +132,39 @@ class PlayerViewModel(
     }
 
     fun setQuality(quality: StreamQuality) {
+        if (_uiState.value.config.quality == quality) return
         val updated = _uiState.value.config.copy(quality = quality)
         _uiState.value = _uiState.value.copy(config = updated)
         repository.saveConfig(updated)
         playStream()
     }
 
-    fun toggleAudio() {
-        val newAudioState = !_uiState.value.config.audioEnabled
-        val updated = _uiState.value.config.copy(audioEnabled = newAudioState)
+    fun toggleStretchMode() {
+        val newStretch = !_uiState.value.config.stretchToFit
+        val updated = _uiState.value.config.copy(stretchToFit = newStretch)
         _uiState.value = _uiState.value.copy(config = updated)
         repository.saveConfig(updated)
-        applyAudioVolume()
-    }
-
-    fun setVolume(volume: Float) {
-        val updated = _uiState.value.config.copy(volume = volume)
-        _uiState.value = _uiState.value.copy(config = updated)
-        repository.saveConfig(updated)
-        applyAudioVolume()
-    }
-
-    private fun applyAudioVolume() {
-        val cfg = _uiState.value.config
-        val volInt = if (cfg.audioEnabled) (cfg.volume * 100).toInt().coerceIn(0, 100) else 0
-        mediaPlayer?.volume = volInt
     }
 
     fun toggleControlsVisibility() {
         _uiState.value = _uiState.value.copy(isControlsVisible = !_uiState.value.isControlsVisible)
     }
 
-    fun setSettingsSheetOpen(open: Boolean) {
-        _uiState.value = _uiState.value.copy(isSettingsSheetOpen = open)
+    fun openModal(modal: ActiveModal) {
+        _uiState.value = _uiState.value.copy(
+            activeModal = if (_uiState.value.activeModal == modal) ActiveModal.NONE else modal
+        )
+    }
+
+    fun closeModal() {
+        _uiState.value = _uiState.value.copy(activeModal = ActiveModal.NONE)
     }
 
     fun connect() {
         val config = _uiState.value.config
         if (config.ip.isBlank()) {
             _uiState.value = _uiState.value.copy(
-                isSettingsSheetOpen = true,
+                activeModal = ActiveModal.SETTINGS,
                 errorMessage = "Please enter Camera IP address"
             )
             return
@@ -186,7 +173,7 @@ class PlayerViewModel(
         _uiState.value = _uiState.value.copy(
             playerState = PlayerState.CONNECTING,
             errorMessage = null,
-            isSettingsSheetOpen = false
+            activeModal = ActiveModal.NONE
         )
 
         startPingProbe(config.ip, config.port)
@@ -194,28 +181,38 @@ class PlayerViewModel(
     }
 
     private fun playStream() {
-        val url = _uiState.value.config.buildRtspUrl()
-        if (url.isBlank()) return
+        val view = surfaceViewRef ?: return
+        val config = _uiState.value.config
+        if (config.ip.isBlank()) return
 
-        val player = mediaPlayer ?: return
-        val vlc = initLibVLC()
+        restartStreamJob?.cancel()
+        restartStreamJob = viewModelScope.launch(Dispatchers.Main) {
+            // Stop old RTSP stream cleanly first
+            try {
+                if (view.isStarted()) {
+                    view.stop()
+                }
+            } catch (ignored: Exception) {}
 
-        try {
-            player.stop()
-            val media = Media(vlc, Uri.parse(url)).apply {
-                setHWDecoderEnabled(true, false)
-                addOption(":network-caching=300")
-                addOption(":rtsp-tcp")
-                addOption(":no-drop-late-frames")
-            }
-            player.media = media
-            media.release()
-            applyAudioVolume()
-            player.play()
-        } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(
-                playerState = PlayerState.ERROR,
-                errorMessage = e.localizedMessage ?: "Failed to start RTSP stream"
+            // Grace period: allow hardware MediaCodec and sockets to unbind cleanly
+            delay(250)
+
+            val path = if (config.quality == StreamQuality.MAJOR) "1/h264major" else "1/h264minor"
+            val host = if (config.ip.contains(":")) "[${config.ip}]" else config.ip
+            val uri = Uri.parse("rtsp://$host:${config.port}/$path")
+
+            view.init(
+                uri = uri,
+                username = config.username.ifBlank { "admin" },
+                password = config.password,
+                socketTimeout = 3000,
+                transport = RtspClient.Transport.TCP
+            )
+
+            // Start video only (requestAudio = false)
+            view.start(
+                requestVideo = true,
+                requestAudio = false
             )
         }
     }
@@ -244,14 +241,11 @@ class PlayerViewModel(
     override fun onCleared() {
         super.onCleared()
         pingJob?.cancel()
+        restartStreamJob?.cancel()
         try {
-            mediaPlayer?.stop()
-            mediaPlayer?.detachViews()
-            mediaPlayer?.release()
-            libVLC?.release()
+            surfaceViewRef?.stop()
         } catch (ignored: Exception) {}
-        mediaPlayer = null
-        libVLC = null
+        surfaceViewRef = null
     }
 
     class Factory(

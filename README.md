@@ -1,0 +1,146 @@
+<div align="center">
+
+# EYESEC Android Viewer Offline
+
+**An offline-first, ultra-low latency RTSP camera viewer for Android built with Kotlin, Jetpack Compose, and native hardware MediaCodec.**
+
+[![Android](https://img.shields.io/badge/Android-Jetpack%20Compose-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://developer.android.com/jetpack/compose)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.0+-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)](https://kotlinlang.org/)
+[![Hardware Decoded](https://img.shields.io/badge/Decoding-MediaCodec%20HW-orange?style=for-the-badge)](https://developer.android.com/reference/android/media/MediaCodec)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
+[![Platform](https://img.shields.io/badge/Platform-Android%208.0+-green?style=for-the-badge)](https://developer.android.com)
+
+<p align="center">
+  <a href="#-overview">Overview</a> •
+  <a href="#-key-features">Key Features</a> •
+  <a href="#-how-to-find-camera-ip--credentials">Camera Setup Guide</a> •
+  <a href="#-technical-architecture">Architecture</a> •
+  <a href="#-tech-stack">Tech Stack</a> •
+  <a href="#-getting-started">Getting Started</a> •
+  <a href="#-author--credits">Author & Credits</a>
+</p>
+
+</div>
+
+---
+
+## 📖 Overview
+
+**EYESEC Android Viewer Offline** is a standalone, privacy-first mobile CCTV monitor designed for compatible EYESEC and ONVIF RTSP security cameras.
+
+Unlike vendor cloud apps that route camera streams through remote servers with subscription fees, privacy compromises, and internet lag, **EYESEC Android Viewer Offline** streams directly from your camera to your Android phone or tablet over your local Wi-Fi or Ethernet network (LAN). It delivers real-time monitoring with virtually zero latency even when your home or office internet connection is completely offline.
+
+---
+
+## ✨ Key Features
+
+- ⚡ **Direct Hardware Decoding (`MediaCodec`)**: Incoming H.264 NAL units bypass heavy multi-codec software libraries and feed directly into the phone's native hardware decoder chip for ~20ms decoding latency and minimal battery consumption.
+- 🎛️ **Dual Stream Quality Toggle (`HQ` / `LQ`)**: Seamlessly switch between `/1/h264major` (High Definition) and `/1/h264minor` (Low Bandwidth) on the fly without stream crashes or image corruption.
+- 🔍 **Interactive 6x Pinch-to-Zoom & Pan**: Full 2D gesture navigation. Pinch to zoom up to 6x around your touch point, drag to pan across the scene, and double-tap to reset or jump to 2.5x.
+- ↔️ **Screen Mode Toggle**: Instantly switch between **Aspect-Ratio Fit** (preserving true camera proportions) and **Stretch to Fill** (taking advantage of your entire phone display).
+- ⏱️ **Real-Time Network Diagnostics & HUD**: Live camera ping latency monitor (`ms`), TCP connection health indicator dot, and synchronized CCTV timestamp watermark.
+- 🪟 **Floating Glass UI Architecture**: Sleek dark-glass floating controls (42×42dp uniform squircle buttons) with quick-access floating modal cards positioned cleanly above the bar:
+  - ⚙️ **Camera Connection**: Fast configuration for IP, RTSP port (554), username, and password with toggleable visibility.
+  - ❓ **Illustrated Setup Help**: Step-by-step guidance on locating the ONVIF IP and password.
+  - 👤 **Developer Credits**: Quick interactive links to developer portfolio and email.
+- 🛡️ **Offline & 100% Private**: Zero external analytics, cloud servers, or third-party tracking. All credentials persist securely on your device.
+
+---
+
+## 🔍 How to Find Camera IP & Credentials
+
+For compatible EYESEC and ONVIF cameras:
+
+1. **Open Camera Feed**: Open your camera's live view in the **EYESEC** mobile app.
+2. **Settings**: Tap the **three dots (⋯)** in the upper-right corner of the live feed.
+3. **Navigate to ONVIF**: Open the **ONVIF** menu and ensure the switch is toggled **ON**.
+4. **Retrieve Local IP**: Your local camera IP address (e.g., `192.168.1.57`) is displayed on this screen.
+5. **Set Password**: Use the **Reset Password** option to define your local RTSP password.
+6. **Connect**: In EYESEC Android Viewer, enter the camera's IP, use port **`554`**, username **`admin`**, and your password.
+
+---
+
+## 🏗️ Technical Architecture
+
+```text
+EYESEC Camera ── RTSP / RTP over TCP ── Local Wi-Fi (LAN) ── Android MediaCodec HW Decoder ── Screen
+```
+
+- **RTSP Handshake**: Forces RTP-over-TCP (`Interleaved RTSP`) to prevent UDP packet loss and firewall drops.
+- **Zero-Buffering Queue**: Frames are presented immediately upon arrival rather than queued in large multi-second buffers.
+- **Teardown Safety**: Implements a 250ms hardware unbind window when switching streams or credentials, preventing `MediaCodec` memory leaks or decoder stalls.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category | Technologies |
+|---|---|
+| **Language** | [Kotlin 2.0+](https://kotlinlang.org/) |
+| **UI Framework** | [Jetpack Compose](https://developer.android.com/jetpack/compose) (Material 3) |
+| **Video Decoding** | Android Native [MediaCodec](https://developer.android.com/reference/android/media/MediaCodec) (Hardware AVC / H.264) |
+| **RTSP Engine** | Lightweight Low-Latency RTSP Client (Zero-buffering pipeline) |
+| **Build & Tooling** | Android Gradle Plugin 9.x, R8 Minification, Java 17 |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Android 8.0 (API Level 26) or higher.
+- A physical device or emulator on the same Wi-Fi network as the camera.
+
+### Building from Source
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/thearticle/EYESEC-Android-Viewer-Offline.git
+   cd EYESEC-Android-Viewer-Offline
+   ```
+
+2. **Build Debug APK**:
+   ```powershell
+   .\gradlew.bat assembleDebug
+   ```
+
+3. **Install to your connected device**:
+   ```powershell
+   adb install -r app/build/outputs/apk/debug/app-arm64-v8a-debug.apk
+   ```
+
+---
+
+## 📂 Project Structure
+
+```text
+EYESEC-Android-Viewer-Offline/
+├── app/
+│   ├── src/main/
+│   │   ├── kotlin/com/eyesec/viewer/
+│   │   │   ├── data/            # CameraConfig & Settings Repository
+│   │   │   ├── ui/player/       # PlayerScreen, ViewModel & Floating Cards
+│   │   │   └── MainActivity.kt  # Root Activity
+│   │   └── AndroidManifest.xml
+│   ├── build.gradle.kts
+│   └── proguard-rules.pro
+├── gradle/
+│   └── libs.versions.toml
+├── build.gradle.kts
+├── settings.gradle.kts
+└── README.md
+```
+
+---
+
+## 👨‍💻 Author & Credits
+
+Created with ❤️ by **Fauzan Afianto**
+- **Website**: [afianto.dev](https://afianto.dev)
+- **Email**: [fauzan@afianto.dev](mailto:fauzan@afianto.dev)
+- **GitHub**: [@thearticle](https://github.com/thearticle)
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).

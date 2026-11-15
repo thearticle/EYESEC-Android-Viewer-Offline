@@ -11,8 +11,7 @@ data class CameraConfig(
     val username: String = "admin",
     val password: String = "",
     val quality: StreamQuality = StreamQuality.MAJOR,
-    val audioEnabled: Boolean = false,
-    val volume: Float = 0.6f
+    val stretchToFit: Boolean = true
 ) {
     fun buildRtspUrl(): String {
         if (ip.isBlank()) return ""
@@ -44,8 +43,7 @@ class CameraSettingsRepository(context: Context) {
             username = prefs.getString(KEY_USER, "admin") ?: "admin",
             password = prefs.getString(KEY_PASS, "") ?: "",
             quality = if (prefs.getString(KEY_QUALITY, "MAJOR") == "MINOR") StreamQuality.MINOR else StreamQuality.MAJOR,
-            audioEnabled = prefs.getBoolean(KEY_AUDIO, false),
-            volume = prefs.getFloat(KEY_VOLUME, 0.6f)
+            stretchToFit = prefs.getBoolean(KEY_STRETCH, true)
         )
     }
 
@@ -56,8 +54,7 @@ class CameraSettingsRepository(context: Context) {
             .putString(KEY_USER, config.username)
             .putString(KEY_PASS, config.password)
             .putString(KEY_QUALITY, config.quality.name)
-            .putBoolean(KEY_AUDIO, config.audioEnabled)
-            .putFloat(KEY_VOLUME, config.volume)
+            .putBoolean(KEY_STRETCH, config.stretchToFit)
             .apply()
     }
 
@@ -67,7 +64,6 @@ class CameraSettingsRepository(context: Context) {
         private const val KEY_USER = "camera_username"
         private const val KEY_PASS = "camera_password"
         private const val KEY_QUALITY = "stream_quality"
-        private const val KEY_AUDIO = "audio_enabled"
-        private const val KEY_VOLUME = "audio_volume"
+        private const val KEY_STRETCH = "stretch_to_fit"
     }
 }
