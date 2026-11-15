@@ -13,6 +13,7 @@
 
 <p align="center">
   <a href="#-overview">Overview</a> •
+  <a href="#-screenshots--ui-showcase">Screenshots</a> •
   <a href="#-key-features">Key Features</a> •
   <a href="#-releases--apk-downloads">Releases (APKs)</a> •
   <a href="#-how-to-find-camera-ip--credentials">Camera Setup Guide</a> •
@@ -31,6 +32,35 @@
 **EYESEC Android Viewer Offline** is a standalone, privacy-first mobile CCTV monitor designed for compatible EYESEC and ONVIF RTSP security cameras.
 
 Unlike vendor cloud apps that route camera streams through remote servers with subscription fees, privacy compromises, and internet lag, **EYESEC Android Viewer Offline** streams directly from your camera to your Android phone or tablet over your local Wi-Fi or Ethernet network (LAN). It delivers real-time monitoring with virtually zero latency even when your home or office internet connection is completely offline.
+
+---
+
+## 📱 Screenshots & UI Showcase
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="33%"><b>1. Aspect-Ratio Fit Mode</b></td>
+      <td align="center" width="33%"><b>2. Fullscreen Stretch Mode</b></td>
+      <td align="center" width="33%"><b>3. Camera Connection Card</b></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="docs/screenshots/01_live_view_fit.png" width="220" alt="Aspect-Ratio Fit View" /></td>
+      <td align="center"><img src="docs/screenshots/02_live_view_stretched.png" width="220" alt="Fullscreen Stretch View" /></td>
+      <td align="center"><img src="docs/screenshots/03_camera_connection_modal.png" width="220" alt="Camera Connection Card" /></td>
+    </tr>
+    <tr>
+      <td align="center" width="33%"><b>4. Illustrated Setup Help</b></td>
+      <td align="center" width="33%"><b>5. In-App Developer Credits</b></td>
+      <td align="center" width="33%"><b>6. Symmetrical Floating HUD</b></td>
+    </tr>
+    <tr>
+      <td align="center"><img src="docs/screenshots/04_finding_credentials_help.png" width="220" alt="Illustrated Setup Help" /></td>
+      <td align="center"><img src="docs/screenshots/05_credits_fauzan_afianto.png" width="220" alt="In-App Developer Credits" /></td>
+      <td align="center"><img src="docs/screenshots/01_live_view_fit.png" width="220" alt="Symmetrical Floating HUD" /></td>
+    </tr>
+  </table>
+</div>
 
 ---
 
